@@ -1,9 +1,9 @@
 #ifndef LIST_H
 #define LIST_H
 
-typedef struct {
+typedef struct Element{
     void* content ;
-    Element* next ;
+    struct Element* next ;
 } Element ;
 
 typedef struct{
@@ -12,13 +12,13 @@ typedef struct{
     int length ;
 } List ;
 
-typedef int (*compare_pt)(Element*, void*);
+typedef int (*compare_pt)(void*, void*);
 
 void add(List* l, void* element) ;
 
-Element* find(List* l, compare_pt f_pt, void* elem_cmp) ;
+void* find(List* l, compare_pt f_pt, void* elem_cmp) ;
 
-Element* del(List* l, compare_pt f_pt, void* elem_cmp) ;
+void* del(List* l, compare_pt f_pt, void* elem_cmp) ;
 
 #endif
 

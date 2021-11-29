@@ -7,6 +7,7 @@
 
 #include "fon.h"     		/* Primitives de la boite a outils */
 #include "commands.h"
+#include "List.h"
 
 #define SERVICE_DEFAUT "1111"
 #define MAX_CLIENTS 32
@@ -73,13 +74,13 @@ void build_fd_sets(int listen_sock, List anonymous, List users, fd_set* fds){
 
 	Element* e = anonymous.first;
 	while(e){
-		FD_SET(((Client*)e.content)->id, fds);
+		FD_SET(((Client*)e->content)->id, fds);
 		e = e->next;
 	}
 
 	e = users.first;
 	while(e){
-		FD_SET(((Client*)e.content)->id, fds);
+		FD_SET(((Client*)e->content)->id, fds);
 		e = e->next;
 	}
 }  
@@ -89,16 +90,16 @@ void new_user(){
 
 }
 
-void new_connection(int listen_sock, List anonymous){
+void new_connection(int listen_sock, List* anonymous){
 	Client* c = malloc(sizeof(Client));
 	int id_socket_client = h_accept(listen_sock, c->addrin);
 	c->id = id_socket_client;
 	char com = Q_NAME;
-	anonymous.add(c);
+	add(anonymous, c);
 	h_writes(c->id, &com, 1);
 }
 
-void handle_msg_anon(int sock_id, List anonymous, List users){
+void handle_msg_anon(int sock_id, List* anonymous, List* users){
 	int8_t command;
 	h_reads(sock_id, &command, 1);
 	
@@ -111,10 +112,10 @@ void handle_msg_anon(int sock_id, List anonymous, List users){
 			h_reads(sock_id, name, length);
 			name[length] = '\0';
 
-			Client* c = anonymous.find(match_id, &sock_id);
-			anonymous.del(match_id, &sock_id);
+			Client* c = find(anonymous, match_id, &sock_id);
+			del(anonymous, match_id, &sock_id);
 			c->name = name;
-			users.add(c);
+			add(users, c);
 		break;
 
 		MSG_TO:
@@ -127,7 +128,7 @@ void handle_msg_anon(int sock_id, List anonymous, List users){
 		break;
 
 		BYE:
-			
+
 		break;
 
 		default:
@@ -166,14 +167,14 @@ void serveur_appli(char *service)
 
 			
 		if (FD_ISSET(listen_sock, &set)){
-			new_connection();
+			new_connection(listen_sock, &anonymous);
 		}
 
 		Element* e = anonymous.first;
 		while(e){
 			Client* client = e->content;
 			if(FD_ISSET(client->id, &set))
-				handle_msg_anon(client->id);
+				handle_msg_anon(client->id, &anonymous, &users);
 			e = e->next;
 		}
 

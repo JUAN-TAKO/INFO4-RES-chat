@@ -1,7 +1,9 @@
 
 OBJ1 = fon.o client.o 
 OBJ2 = fon.o serveur.o 
-OPTIONS	=
+OPTIONS	= 
+CFLAGS = -g
+LFLAGS = -g
 # Adaptation a Darwin / MacOS X avec fink
 # Du fait de l'absence de libtermcap on se fait pas mal
 # cracher dessus mais ca marche...
@@ -34,8 +36,8 @@ all: ${EXEC}
 
 
 fon.o :  fon.h fon.c
-	gcc -DDEBUG -c fon.c
-	#gcc -c fon.c
+	#gcc -DDEBUG -c fon.c
+	gcc -c fon.c
 
 client.o : fon.h	client.c 
 	gcc  $(CFLAGS) -c  client.c	
@@ -52,5 +54,5 @@ serveur : ${OBJ2}
 
 
 clean : 
-	rm -f ${EXEC} core
+	rm -f ${EXEC} core essaicurse
 

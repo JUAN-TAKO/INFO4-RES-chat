@@ -9,10 +9,19 @@ void init(List* l){
 }
 
 void add(List* l, void* element){
-    l->length ++ ;
     Element *e = malloc(sizeof(Element));
+
     e->content = element ;
-    l->last->next = e ;
+    if (!l->length){
+        l->first = e;
+        l->last = e;
+    }
+    else{
+        l->last->next = e ;
+        l->last = e;
+    } 
+    l->length ++ ;
+
 }
 
 void* find(List* l, compare_pt f_pt, void* elem_cmp){
@@ -31,12 +40,14 @@ void* del(List* l, compare_pt f_pt, void* elem_cmp){
     if (f_pt(tmp->content, elem_cmp)) {
         save = tmp->next ;
         l->first = l->first->next ;
+        l->length--;
         return save->content;
     }
     while (tmp){
         if (f_pt(tmp->next, elem_cmp)){
             save = tmp->next ;
             tmp->next = tmp->next->next ;
+            l->length--;
             return save->content ;
         } 
         tmp = tmp->next;

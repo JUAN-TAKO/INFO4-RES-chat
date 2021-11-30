@@ -117,18 +117,15 @@ void clear_buffer(int sock_id){
 }
 void new_connection(int listen_sock, List* anonymous){
 	Client* c = malloc(sizeof(Client));
-	printf("accept\n");
 	int id_socket_client = h_accept(listen_sock, c->addrin);
 	c->id = id_socket_client;
 	//printf("a %ld\n", (size_t)c->addrin);
 	//printf("[NEW CONNECTION]: %s - ID=%d\n", inet_ntoa(c->addrin->sin_addr), c->id);
 	printf("[NEW CONNECTION]\n");
 	add(anonymous, c);
-	printf("added\n");
 	
 	char com = Q_NAME;
 	h_writes(c->id, &com, 1);
-	printf("W\n");
 
 }
 
@@ -322,10 +319,9 @@ void serveur_appli(char *service)
 
 		//nouvelle connexion ?
 		if (FD_ISSET(listen_sock, &set)){
-			printf("new\n");
 			new_connection(listen_sock, &anonymous);
 		}
-		printf("new ok\n");
+		
 		//message reçu d'un client anonyme ?
 		Element* e = anonymous.first;
 		while(e){

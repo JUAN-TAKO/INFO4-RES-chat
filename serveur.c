@@ -4,6 +4,11 @@
 #include<sys/signal.h>
 #include<sys/wait.h>
 #include<stdlib.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <string.h>
 
 #include "fon.h"     		/* Primitives de la boite a outils */
 #include "commands.h"
@@ -112,7 +117,7 @@ void new_connection(int listen_sock, List* anonymous){
 	int id_socket_client = h_accept(listen_sock, c->addrin);
 	c->id = id_socket_client;
 	
-	printf("[NEW CONNECTION]: %s - ID=%d\n", c->addrin->sin_addr, c->id);
+	printf("[NEW CONNECTION]: %s - ID=%d\n", inet_ntoa(c->addrin->sin_addr), c->id);
 
 	add(anonymous, c);
 	
@@ -122,8 +127,13 @@ void new_connection(int listen_sock, List* anonymous){
 
 void free_client(int sock_id, List* l){
 	Client* c = (Client*)del(l,match_id, &sock_id);
+	if(strlen(c->name))
+		printf("[DISCONNECT]: %s (ID=%d)\n", c->name, c->id);
+	else
+		printf("[DISCONNECT]: ID=%d\n", c->id);
 	free(c->name);
 	h_close(sock_id);
+	
 }
 
 void handle_msg_anon(int sock_id, List* anonymous, List* users){
@@ -132,7 +142,7 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 	int length;
 	switch(command){
 
-		case A_NAME:
+		case A_NAME: ;
 			int nl;
 			char* name = read_string(sock_id, &nl);
 			
@@ -143,12 +153,12 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 			c->name = name;
 			add(users, c);
 			
-			printf("[USER LOGIN]: %s is %s\n", c->addrin->sin_addr, c->name);
+			printf("[USER LOGIN]: %s is %s\n", inet_ntoa(c->addrin->sin_addr), c->name);
 			break;
 
 		case MSG_TO:
 			clear_buffer(sock_id);
-
+			
 			int8_t com = ERROR;
 			char err_msg[] = "You must be logged in to send messages (name required)";
 			length = sizeof(err_msg) - 1;
@@ -164,10 +174,10 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 		default:
 			clear_buffer(sock_id);
 
-			int8_t com = ERROR;
-			char err_msg[] = "Unknown command";
-			length = sizeof(err_msg) - 1;
-			h_writes(sock_id, &com, 1);
+			int8_t com_ = ERROR;
+			char err_msg_[] = "Unknown command";
+			length = sizeof(err_msg_) - 1;
+			h_writes(sock_id, &com_, 1);
 			h_writes(sock_id, (char*)&length, 4);
 			h_writes(sock_id, err_msg, length);
 			break;
@@ -175,6 +185,9 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 }
 
 void send_msg(Client* src, Client* dest, char* msg, int msg_len){
+
+	printf("[MSG]: %s -> %s\n", src->name, dest->name);
+
 	int8_t command = MSG_FROM;
 	int name_len = strlen(src->name);
 	h_writes(dest->id, &command, 1);
@@ -235,8 +248,8 @@ void handle_msg_user(int sock_id, List* users){
 			clear_buffer(sock_id);
 
 			int8_t com = ERROR;
-			char err_msg[] = "Unknown command";
-			length = sizeof(err_msg) - 1;
+			char err_msg_[] = "Unknown command";
+			length = sizeof(err_msg_) - 1;
 			h_writes(sock_id, &com, 1);
 			h_writes(sock_id, (char*)&length, 4);
 			h_writes(sock_id, err_msg, length);
@@ -272,12 +285,15 @@ void serveur_appli(char *service)
 	List anonymous;
 	List users;
 
-	printf("<<<< PolyRTC v1 >>>>\n")
+	printf("<<<< PolyRTC v1 >>>>\n");
 	//====== socket d'écoute ======
 	int listen_sock = h_socket(AF_INET, SOCK_STREAM);
 	
+	printf("socket\n");
 	adr_socket(service, "*", SOCK_STREAM, &local);
+	printf("adr\n");
 	h_bind(listen_sock, local);
+	printf("bind\n");
 	h_listen(listen_sock, 10);
 	//==============================
 

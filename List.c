@@ -2,6 +2,11 @@
 #include <stdio.h>
 #include "List.h"
 
+void init(List* l){
+    l->first = NULL;
+    l->last = NULL;
+    l->length = 0;
+}
 
 void add(List* l, void* element){
     l->length ++ ;

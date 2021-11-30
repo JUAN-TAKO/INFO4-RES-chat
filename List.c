@@ -7,7 +7,11 @@ void add(List* l, void* element){
     l->length ++ ;
     Element *e = malloc(sizeof(Element));
     e->content = element ;
-    l->last->next = e ;
+    if (!l){
+        l->start = e;
+        l->end = e;
+    }
+    else l->last->next = e ;
 }
 
 void* find(List* l, compare_pt f_pt, void* elem_cmp){

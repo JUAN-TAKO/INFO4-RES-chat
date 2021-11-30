@@ -102,13 +102,13 @@ void new_user(){
 char* read_string(int sock_id, int* len){
 	h_reads(sock_id, (char*)len, 4);
 	char* r = malloc(*len+1);
-	h_reads(sock_id, r, len);
-	r[len] = '\0';
+	h_reads(sock_id, r, *len);
+	r[*len] = '\0';
 	return r;
 }
 void skip_string(int sock_id){
 	int len;
-	h_reads(sock_id, (char*)&len, 4);
+	free(read_string(sock_id, &len));
 }
 void clear_buffer(int sock_id){
 	char buffer[256];
@@ -119,13 +119,14 @@ void new_connection(int listen_sock, List* anonymous){
 	Client* c = malloc(sizeof(Client));
 	int id_socket_client = h_accept(listen_sock, c->addrin);
 	c->id = id_socket_client;
-	
-	printf("[NEW CONNECTION]: %s - ID=%d\n", inet_ntoa(c->addrin->sin_addr), c->id);
-
+	//printf("a %ld\n", (size_t)c->addrin);
+	//printf("[NEW CONNECTION]: %s - ID=%d\n", inet_ntoa(c->addrin->sin_addr), c->id);
+	printf("[NEW CONNECTION]\n");
 	add(anonymous, c);
 	
 	char com = Q_NAME;
 	h_writes(c->id, &com, 1);
+
 }
 
 void free_client(int sock_id, List* l){
@@ -276,27 +277,27 @@ int get_maxsock(int listen_sock, List* anon, List* users){
 	int maxsock = listen_sock;
 	int max1 = get_maxsock_l(anon);
 	int max2 = get_maxsock_l(users);
+
 	if(max1 > maxsock)
 		maxsock = max1;
 	if(max2 > maxsock)
 		maxsock = max2;
-	return maxsock;
+	return maxsock + 1;
 }
 void serveur_appli(char *service)
 {
 	struct sockaddr_in* local;
 	List anonymous;
 	List users;
+	init(&anonymous);
+	init(&users);
 
 	printf("<<<< PolyRTC v1 >>>>\n");
 	//====== socket d'écoute ======
 	int listen_sock = h_socket(AF_INET, SOCK_STREAM);
 	
-	printf("socket\n");
 	adr_socket(service, "*", SOCK_STREAM, &local);
-	printf("adr\n");
 	h_bind(listen_sock, local);
-	printf("bind\n");
 	h_listen(listen_sock, 10);
 	//==============================
 
@@ -310,17 +311,17 @@ void serveur_appli(char *service)
 		build_fd_sets(listen_sock, anonymous, users, &set); //on remplis le set
 
 		bcopy ( (char*) &set, (char*) &setbis, sizeof(set)) ; /* sauvegarde set dans setbis car set va changer lors du select */
-		
 
+		printf("maxsock %d\n", maxsock);
 		//en attente d'un évenement
 		select (maxsock, &set, 0, 0, 0) ;
-	
+		printf("up\n");
 
 		//nouvelle connexion ?
 		if (FD_ISSET(listen_sock, &set)){
 			new_connection(listen_sock, &anonymous);
 		}
-
+		
 		//message reçu d'un client anonyme ?
 		Element* e = anonymous.first;
 		while(e){

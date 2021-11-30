@@ -10,27 +10,29 @@ void add(List* l, void* element){
     l->last->next = e ;
 }
 
-Element* find(List* l, compare_pt f_pt, void* elem_cmp){
+void* find(List* l, compare_pt f_pt, void* elem_cmp){
     Element* tmp = l->first;
     while (tmp){
-        if (f_pt(tmp, elem_cmp)) return tmp;
+        if (f_pt(tmp->content, elem_cmp)) return tmp->content;
         tmp = tmp->next;
     }
 
     return NULL;
 }
 
-Element* del(List* l, compare_pt f_pt, void* elem_cmp){
+void* del(List* l, compare_pt f_pt, void* elem_cmp){
     Element* tmp = l->first ;
-    if (f_pt(tmp, elem_cmp)) {
+    Element* save;
+    if (f_pt(tmp->content, elem_cmp)) {
+        save = tmp->next ;
         l->first = l->first->next ;
-        return tmp->next ;
+        return save->content;
     }
     while (tmp){
         if (f_pt(tmp->next, elem_cmp)){
-            Element* save = tmp->next ;
+            save = tmp->next ;
             tmp->next = tmp->next->next ;
-            return save ;
+            return save->content ;
         } 
         tmp = tmp->next;
     }

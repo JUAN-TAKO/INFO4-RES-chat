@@ -52,14 +52,18 @@ typedef struct{
 } Client;
 
 
-int match_id(Client* c, int id){
-	if(c->id == id)
+int match_id(void* client, void* id){
+	Client* c = client;
+	int idm = *((int*) id);
+	if(c->id == idm)
 		return 1;
 	
 	return 0;
 }
 
-int match_name(Client* c, char* name){
+int match_name(void* client, void* name){
+	Client* c = client;
+	char* namem = (char*) name;
 	if(strcmp(c->name, name) == 0)
 		return 1;
 	
@@ -90,6 +94,15 @@ void new_user(){
 
 }
 
+char* read_string(int sock_id, int* len){
+	h_reads(sock_id, (char*)len, 2);
+	return malloc(*len+1);
+}
+void skip_string(int sock_id){
+	int len;
+	h_reads(sock_id, (char*)&len, 2);
+}
+
 void new_connection(int listen_sock, List* anonymous){
 	Client* c = malloc(sizeof(Client));
 	int id_socket_client = h_accept(listen_sock, c->addrin);
@@ -99,19 +112,18 @@ void new_connection(int listen_sock, List* anonymous){
 	h_writes(c->id, &com, 1);
 }
 
-void free_client(){
-
-	h_close(id_socket_client);
+void free_client(int sock_id, List* anonymous){
+	Client* c = (Client*)del(anonymous,match_id, &sock_id);
+	h_close(sock_id);
 }
 
 void handle_msg_anon(int sock_id, List* anonymous, List* users){
-	int8_t command;
-	h_reads(sock_id, &command, 1);
-	
+	commands_e command;
+	h_reads(sock_id, (char*)&command, 1);
+	int length;
 	switch(command){
 
-		A_NAME:
-			int length;
+		case A_NAME:
 			h_reads(sock_id, (char*)&length, 2);
 			char* name = malloc(length+1);
 			h_reads(sock_id, name, length);
@@ -123,29 +135,103 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 			add(users, c);
 		break;
 
-		MSG_TO:
-			int8_t c = ERROR;
-			char msg[] = "You must be logged in (name required)";
-			int length = sizeof(msg) - 1;
-			hwrites(sock_id, &c, 1);
-			h_writes(sock_id, &length, 2);
-			h_writes(sock_id, msg, length);
+		case MSG_TO:
+			skip_string(sock_id); //name
+			skip_string(sock_id); //msg	
+
+			int8_t com = ERROR;
+			char err_msg[] = "You must be logged in (name required)";
+			length = sizeof(err_msg) - 1;
+			h_writes(sock_id, &com, 1);
+			h_writes(sock_id, (char*)&length, 2);
+			h_writes(sock_id, err_msg, length);
 		break;
 
 		BYE:
-			free_client();
+			free_client(sock_id, List* anonymous);
 		break;
 
 		default:
 
-
+		break;
 	}
 }
 
-void handle_msg_user(){
-
+void send_msg(Client* src, Client* dest, char* msg, int msg_len){
+	int8_t command = MSG_FROM;
+	int name_len = strlen(src->name);
+	h_writes(dest->id, &command, 1);
+	h_writes(dest->id, (char*)&name_len, 2);
+	h_writes(dest->id, src->name, name_len);
+	h_writes(dest->id, (char*)&msg_len, 2);
+	h_writes(dest->id, msg, msg_len);
 }
 
+void handle_msg_user(int sock_id, List* users){
+	commands_e command;
+	h_reads(sock_id, (char*)&command, 1);
+	
+	
+	int length;
+
+	switch(command){
+
+		case A_NAME:
+			skip_string(sock_id); //name
+
+			int8_t c = ERROR;
+			char err_msg[] = "Already logged in";
+			length = sizeof(err_msg) - 1;
+			h_writes(sock_id, &c, 1);
+			h_writes(sock_id, (char*)&length, 2);
+			h_writes(sock_id, err_msg, length);
+			break;
+
+		case MSG_TO: ;
+			int name_len;
+			char* name = read_string(sock_id, &name_len);
+
+			int msg_len;
+			char* msg = read_string(sock_id, &msg_len);
+
+			Client* dest = find(users, match_name, name);
+			Client* src = find(users, match_id, &sock_id);
+
+			if(dest){
+				send_msg(src, dest, msg, msg_len);
+			}
+			else{
+				int8_t c = ERROR;
+				char msg[] = "User not found";
+				length = sizeof(msg) - 1;
+				h_writes(sock_id, &c, 1);
+				h_writes(sock_id, (char*)&length, 2);
+				h_writes(sock_id, msg, length);
+			}
+			break;
+
+		case BYE:
+
+			break;
+
+		default:
+
+			break;
+	}
+}
+
+
+int get_maxsock(List* l){
+	int max = 0;
+	Element* e = l->first;
+	while(e){
+		Client* client = e->content;
+		if(client->id > max)
+			max = client->id;
+		e = e->next;
+	}
+	return max;
+}
 void serveur_appli(char *service)
 {
 	struct sockaddr_in* local;
@@ -159,13 +245,19 @@ void serveur_appli(char *service)
 	h_bind(listen_sock, local);
 	h_listen(listen_sock, 10);
 
-	int maxsock = listen_sock;
-
 	while(1){
-		
+		int maxsock = listen_sock;
+		int max1 = get_maxsock(&anonymous);
+		int max2 = get_maxsock(&users);
+		if(max1 > maxsock)
+			maxsock = max1;
+		if(max2 > maxsock)
+			maxsock = max2;
+
+
 		fd_set set, setbis ; /* set et setbis sont des ensembles de descripteur */
 		
-		build_fd_sets(listen_sock, anonymous, users, set);
+		build_fd_sets(listen_sock, anonymous, users, &set);
 		bcopy ( (char*) &set, (char*) &setbis, sizeof(set)) ; /* sauvegarde set dans setbis car set va changer lors du select */
 		
 		select (maxsock, &set, 0, 0, 0) ;
@@ -187,7 +279,7 @@ void serveur_appli(char *service)
 		while(e){
 			Client* client = e->content;
 			if(FD_ISSET(client->id, &set))
-				handle_msg_user(client->id);
+				handle_msg_user(client->id, &users);
 			e = e->next;
 		}
 		

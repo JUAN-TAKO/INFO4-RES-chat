@@ -21,10 +21,6 @@
 #include "fon.h"   		/* primitives de la boite a outils */
 #include "commands.h"
 
-
-#define SERVICE_DEFAUT "1111"
-#define SERVEUR_DEFAUT "127.0.0.1"
-
 void client_appli (char *serveur, char *service);
 
 
@@ -34,8 +30,8 @@ void client_appli (char *serveur, char *service);
 int main(int argc, char *argv[])
 {
 
-	char *serveur= SERVEUR_DEFAUT; /* serveur par defaut */
-	char *service= SERVICE_DEFAUT; /* numero de service par defaut (no de port) */
+	char *serveur = malloc(16); 
+	char *service = malloc(8);
 
 
 	/* Permet de passer un nombre de parametre variable a l'executable */
@@ -71,10 +67,10 @@ char* init_connection(char *serveur, char *service, int *sock_num){
 	printf("Veuillez entrer les informations suivantes:\n");
 
 	printf("Adresse IP (ou nom) du serveur: ");
-	scanf("%s", serveur);
+	scanf("%16s", serveur);
 
 	printf("\nNuméro de port: ");
-	scanf("%s", service);
+	scanf("%8s", service);
 
 	printf("\nPseudonyme souhaité sur la messagerie (32 charactères max): ");
 	char* pseudo = malloc(32);
@@ -96,16 +92,68 @@ void send_pseudo(int sock_num, char* pseudo){
 }
 
 void display_help(){
-	printf("test");
-}
-
-void start_communication(int sock_num){
-	display_help();
+	printf("Pour envoyer un message tapper envoi, pour la liste des contacts tapper list, et quit pour quitter:\n");
 }
 
 void send_bye(int sock_num){
 	int8_t command = BYE;
 	h_writes(sock_num, &command, 1);
+}
+
+void communication(int sock_num, char* command, char* name, char* message){
+	display_help();
+	scanf("%8s", command);
+
+	int case_number;
+	if (strcmp(command,"envoi")) case_number = 0;
+	else if (strcmp(command,"list")) case_number = 1;
+	else if (strcmp(command,"quit")) case_number = 2;
+
+	switch (case_number)
+	{
+	case 0:
+		printf("Entrer le nom du destinataire:");
+		scanf("%32s", name);
+		printf("Entrez le message:");
+		scanf("%2048s", message);
+		int tmp = strlen(name);
+		int tmp2 = strlen(name);
+
+		h_writes(sock_num, (char*)&tmp,4);
+		h_writes(sock_num, name, tmp);
+		h_writes(sock_num, (char*)&tmp2, 4);
+		h_writes(sock_num, message, tmp2);
+		break;
+	case 1:
+		break;
+	case 2:
+		free(command);
+		free(name);
+		free(message);
+		send_bye(sock_num);
+		h_close(sock_num);
+		break;
+	default:
+		break;
+	}
+
+
+}
+
+char* read_string(int sock_id, int* len){
+	h_reads(sock_id, (char*)len, 4);
+	char* r = malloc(*len+1);
+	h_reads(sock_id, r, *len);
+	r[*len] = '\0';
+	return r;
+}
+
+void reception(int sock_num, char* message){
+	read(sock_num, message, 1);
+	int tmp;
+	read_string(sock_num, &tmp);
+	message = read_string(sock_num, &tmp);
+	printf("%s\n", message);
 }
 
 /*****************************************************************************/
@@ -121,13 +169,16 @@ void client_appli (char *serveur,char *service)
 	/* attente du signal pour envoyer le pseudo */
 	send_pseudo(sock_num, pseudo);
 
-	start_communication(sock_num);
+	char* command = malloc(8);
+	char* name = malloc(32);
+	char* message = malloc(2048);
+
+	while(1){
+		communication(sock_num, command, name, message);
+		reception(sock_num, message);
+	}
 
 
-
-	/* Fermeture de la connection */
-	send_bye(sock_num);
-	h_close(sock_num);
 }
 
 /*****************************************************************************/

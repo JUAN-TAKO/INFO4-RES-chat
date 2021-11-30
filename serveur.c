@@ -101,7 +101,10 @@ void new_user(){
 
 char* read_string(int sock_id, int* len){
 	h_reads(sock_id, (char*)len, 4);
-	return malloc(*len+1);
+	char* r = malloc(*len+1);
+	h_reads(sock_id, r, len);
+	r[len] = '\0';
+	return r;
 }
 void skip_string(int sock_id){
 	int len;

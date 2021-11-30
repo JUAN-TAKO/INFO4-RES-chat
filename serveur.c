@@ -148,7 +148,7 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 		break;
 
 		BYE:
-			free_client(sock_id, List* anonymous);
+			free_client(sock_id, anonymous);
 		break;
 
 		default:

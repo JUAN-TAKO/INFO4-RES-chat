@@ -99,6 +99,11 @@ void new_connection(int listen_sock, List* anonymous){
 	h_writes(c->id, &com, 1);
 }
 
+void free_client(){
+
+	h_close(id_socket_client);
+}
+
 void handle_msg_anon(int sock_id, List* anonymous, List* users){
 	int8_t command;
 	h_reads(sock_id, &command, 1);
@@ -128,7 +133,7 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 		break;
 
 		BYE:
-
+			free_client();
 		break;
 
 		default:

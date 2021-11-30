@@ -4,6 +4,11 @@
 #include<sys/signal.h>
 #include<sys/wait.h>
 #include<stdlib.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <string.h>
 
 #include "fon.h"     		/* Primitives de la boite a outils */
 #include "commands.h"
@@ -95,26 +100,40 @@ void new_user(){
 }
 
 char* read_string(int sock_id, int* len){
-	h_reads(sock_id, (char*)len, 2);
+	h_reads(sock_id, (char*)len, 4);
 	return malloc(*len+1);
 }
 void skip_string(int sock_id){
 	int len;
-	h_reads(sock_id, (char*)&len, 2);
+	h_reads(sock_id, (char*)&len, 4);
 }
-
+void clear_buffer(int sock_id){
+	char buffer[256];
+	int r;
+	while(  (r = read(sock_id, buffer, 256)) != 0);
+}
 void new_connection(int listen_sock, List* anonymous){
 	Client* c = malloc(sizeof(Client));
 	int id_socket_client = h_accept(listen_sock, c->addrin);
 	c->id = id_socket_client;
-	char com = Q_NAME;
+	
+	printf("[NEW CONNECTION]: %s - ID=%d\n", inet_ntoa(c->addrin->sin_addr), c->id);
+
 	add(anonymous, c);
+	
+	char com = Q_NAME;
 	h_writes(c->id, &com, 1);
 }
 
-void free_client(int sock_id, List* anonymous){
-	Client* c = (Client*)del(anonymous,match_id, &sock_id);
+void free_client(int sock_id, List* l){
+	Client* c = (Client*)del(l,match_id, &sock_id);
+	if(strlen(c->name))
+		printf("[DISCONNECT]: %s (ID=%d)\n", c->name, c->id);
+	else
+		printf("[DISCONNECT]: ID=%d\n", c->id);
+	free(c->name);
 	h_close(sock_id);
+	
 }
 
 void handle_msg_anon(int sock_id, List* anonymous, List* users){
@@ -123,47 +142,58 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 	int length;
 	switch(command){
 
-		case A_NAME:
-			h_reads(sock_id, (char*)&length, 2);
-			char* name = malloc(length+1);
-			h_reads(sock_id, name, length);
-			name[length] = '\0';
+		case A_NAME: ;
+			int nl;
+			char* name = read_string(sock_id, &nl);
+			
 
 			Client* c = find(anonymous, match_id, &sock_id);
+			
 			del(anonymous, match_id, &sock_id);
 			c->name = name;
 			add(users, c);
-		break;
+			
+			printf("[USER LOGIN]: %s is %s\n", inet_ntoa(c->addrin->sin_addr), c->name);
+			break;
 
 		case MSG_TO:
-			skip_string(sock_id); //name
-			skip_string(sock_id); //msg	
-
+			clear_buffer(sock_id);
+			
 			int8_t com = ERROR;
-			char err_msg[] = "You must be logged in (name required)";
+			char err_msg[] = "You must be logged in to send messages (name required)";
 			length = sizeof(err_msg) - 1;
 			h_writes(sock_id, &com, 1);
-			h_writes(sock_id, (char*)&length, 2);
+			h_writes(sock_id, (char*)&length, 4);
 			h_writes(sock_id, err_msg, length);
-		break;
+			break;
 
 		BYE:
 			free_client(sock_id, anonymous);
-		break;
+			break;
 
 		default:
+			clear_buffer(sock_id);
 
-		break;
+			int8_t com_ = ERROR;
+			char err_msg_[] = "Unknown command";
+			length = sizeof(err_msg_) - 1;
+			h_writes(sock_id, &com_, 1);
+			h_writes(sock_id, (char*)&length, 4);
+			h_writes(sock_id, err_msg, length);
+			break;
 	}
 }
 
 void send_msg(Client* src, Client* dest, char* msg, int msg_len){
+
+	printf("[MSG]: %s -> %s\n", src->name, dest->name);
+
 	int8_t command = MSG_FROM;
 	int name_len = strlen(src->name);
 	h_writes(dest->id, &command, 1);
-	h_writes(dest->id, (char*)&name_len, 2);
+	h_writes(dest->id, (char*)&name_len, 4);
 	h_writes(dest->id, src->name, name_len);
-	h_writes(dest->id, (char*)&msg_len, 2);
+	h_writes(dest->id, (char*)&msg_len, 4);
 	h_writes(dest->id, msg, msg_len);
 }
 
@@ -177,13 +207,13 @@ void handle_msg_user(int sock_id, List* users){
 	switch(command){
 
 		case A_NAME:
-			skip_string(sock_id); //name
+			clear_buffer(sock_id);
 
 			int8_t c = ERROR;
 			char err_msg[] = "Already logged in";
 			length = sizeof(err_msg) - 1;
 			h_writes(sock_id, &c, 1);
-			h_writes(sock_id, (char*)&length, 2);
+			h_writes(sock_id, (char*)&length, 4);
 			h_writes(sock_id, err_msg, length);
 			break;
 
@@ -205,23 +235,30 @@ void handle_msg_user(int sock_id, List* users){
 				char msg[] = "User not found";
 				length = sizeof(msg) - 1;
 				h_writes(sock_id, &c, 1);
-				h_writes(sock_id, (char*)&length, 2);
+				h_writes(sock_id, (char*)&length, 4);
 				h_writes(sock_id, msg, length);
 			}
 			break;
 
 		case BYE:
-
+			free_client(sock_id, users);
 			break;
 
 		default:
+			clear_buffer(sock_id);
 
+			int8_t com = ERROR;
+			char err_msg_[] = "Unknown command";
+			length = sizeof(err_msg_) - 1;
+			h_writes(sock_id, &com, 1);
+			h_writes(sock_id, (char*)&length, 4);
+			h_writes(sock_id, err_msg, length);
 			break;
 	}
 }
 
 
-int get_maxsock(List* l){
+int get_maxsock_l(List* l){
 	int max = 0;
 	Element* e = l->first;
 	while(e){
@@ -232,41 +269,56 @@ int get_maxsock(List* l){
 	}
 	return max;
 }
+int get_maxsock(int listen_sock, List* anon, List* users){
+	int maxsock = listen_sock;
+	int max1 = get_maxsock_l(anon);
+	int max2 = get_maxsock_l(users);
+	if(max1 > maxsock)
+		maxsock = max1;
+	if(max2 > maxsock)
+		maxsock = max2;
+	return maxsock;
+}
 void serveur_appli(char *service)
 {
 	struct sockaddr_in* local;
 	List anonymous;
 	List users;
-	
-	char buffer[1024];
 
+	printf("<<<< PolyRTC v1 >>>>\n");
+	//====== socket d'écoute ======
 	int listen_sock = h_socket(AF_INET, SOCK_STREAM);
+	
+	printf("socket\n");
 	adr_socket(service, "*", SOCK_STREAM, &local);
+	printf("adr\n");
 	h_bind(listen_sock, local);
+	printf("bind\n");
 	h_listen(listen_sock, 10);
+	//==============================
 
+	printf("Listening on %s\n", service);
+	//boucle principale
 	while(1){
-		int maxsock = listen_sock;
-		int max1 = get_maxsock(&anonymous);
-		int max2 = get_maxsock(&users);
-		if(max1 > maxsock)
-			maxsock = max1;
-		if(max2 > maxsock)
-			maxsock = max2;
-
+		int maxsock = get_maxsock(listen_sock, &anonymous, &users);
 
 		fd_set set, setbis ; /* set et setbis sont des ensembles de descripteur */
 		
-		build_fd_sets(listen_sock, anonymous, users, &set);
+		build_fd_sets(listen_sock, anonymous, users, &set); //on remplis le set
+
 		bcopy ( (char*) &set, (char*) &setbis, sizeof(set)) ; /* sauvegarde set dans setbis car set va changer lors du select */
 		
-		select (maxsock, &set, 0, 0, 0) ;
 
-			
+		//en attente d'un évenement
+		select (maxsock, &set, 0, 0, 0) ;
+	
+
+		//nouvelle connexion ?
 		if (FD_ISSET(listen_sock, &set)){
 			new_connection(listen_sock, &anonymous);
 		}
 
+		//message reçu d'un client anonyme ?
 		Element* e = anonymous.first;
 		while(e){
 			Client* client = e->content;
@@ -275,6 +327,7 @@ void serveur_appli(char *service)
 			e = e->next;
 		}
 
+		//message reçu dd'un utilisateur ?
 		e = users.first;
 		while(e){
 			Client* client = e->content;
@@ -283,6 +336,7 @@ void serveur_appli(char *service)
 			e = e->next;
 		}
 		
+		//reset du fd_set
 		bcopy ( (char*) &setbis, (char*) &set, sizeof(set)) ;
 	}
 

@@ -87,11 +87,11 @@ char* init_connection(char *serveur, char *service, int *sock_num){
 
 void send_pseudo(int sock_num, char* pseudo){
 	char* tampon = malloc(1);
-	print("a");
+	printf("a\n");
 	h_reads(sock_num, tampon, 1);
-	print("b");
+	printf("b\n");
 	if (strcmp(tampon, (char*)Q_NAME)) h_writes(sock_num, (char*)A_NAME, 1);
-	print("c");
+	printf("c\n");
 
 }
 

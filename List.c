@@ -51,7 +51,7 @@ void* del(List* l, compare_pt f_pt, void* elem_cmp){
 
             if(last == l->last)
                 l->last = last->next;
-
+            
             last->next = last->next->next;
             l->length--;
             return e;

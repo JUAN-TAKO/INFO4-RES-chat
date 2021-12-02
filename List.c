@@ -34,23 +34,32 @@ void* find(List* l, compare_pt f_pt, void* elem_cmp){
     return NULL;
 }
 
-void* del(List* l, compare_pt f_pt, void* elem_cmp){
+void del(List* l, compare_pt f_pt, void* elem_cmp){
     Element* tmp = l->first ;
     Element* save;
+    int cmpt = 0; 
     if (f_pt(tmp->content, elem_cmp)) {
         save = tmp->next ;
-        l->first = l->first->next ;
+        if (l->length>1) l->first = l->first->next ;
+        else{
+            l->first = NULL;
+            l->last = NULL;
+        } 
         l->length--;
         return save->content;
     }
     while (tmp){
         if (f_pt(tmp->next, elem_cmp)){
+            if (cmpt+1 == l->length){
+                l->last = tmp;
+            }
             save = tmp->next ;
             tmp->next = tmp->next->next ;
             l->length--;
             return save->content ;
         } 
         tmp = tmp->next;
+        cmpt ++;
     }
     return NULL;
 }

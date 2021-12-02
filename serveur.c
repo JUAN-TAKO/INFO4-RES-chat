@@ -141,30 +141,20 @@ void free_client(int sock_id, List* l){
 }
 
 void handle_msg_anon(int sock_id, List* anonymous, List* users){
-	printf("anon\n");
 	commands_e command;
 	h_reads(sock_id, (char*)&command, 1);
-	printf("test\n");
 	int length;
-	switch(command){
+	switch((uint8_t)command){
 
 		case A_NAME: ;
-			printf("name\n");
 			int nl;
 			char* name = read_string(sock_id, &nl);
-			printf("read\n");
-
+		
 			Client* c = find(anonymous, match_id, &sock_id);
-			printf("found\n");
-
 			del(anonymous, match_id, &sock_id);
-			printf("del\n");
-			
 			c->name = name;
-			
 			add(users, c);
-
-			printf("[USER LOGIN]: %s is %s\n", inet_ntoa(c->addrin->sin_addr), c->name);
+			printf("[USER LOGIN]: ID %d is %s\n", c->id, c->name);
 			break;
 
 		case MSG_TO:
@@ -212,14 +202,13 @@ void send_msg(Client* src, Client* dest, char* msg, int msg_len){
 }
 
 void handle_msg_user(int sock_id, List* users){
-	printf("user\n");
 	commands_e command;
 	h_reads(sock_id, (char*)&command, 1);
 	
 	
 	int length;
 
-	switch(command){
+	switch((uint8_t)command){
 
 		case A_NAME:
 			clear_buffer(sock_id);

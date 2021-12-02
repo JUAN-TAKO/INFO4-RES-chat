@@ -21,5 +21,6 @@ void* find(List* l, compare_pt f_pt, void* elem_cmp) ;
 
 void* del(List* l, compare_pt f_pt, void* elem_cmp) ;
 
+void print_list(List* l);
 #endif
 

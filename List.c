@@ -64,14 +64,16 @@ void* del(List* l, compare_pt f_pt, void* elem_cmp){
 }
 
 void print_list(List* l){
-    printf("Frist: %ld\n", l->first);
-    printf("Last: %ld\n", l->last);
-    printf("Length: %ld\n", l->length);
+    printf("\nFirst: %ld\n", (size_t)l->first);
+    printf("Last: %ld\n", (size_t)l->last);
+    printf("Length: %ld\n", (size_t)l->length);
+    if(!l->length)
+        return;
     int cmpt = 2;
-    Element* tmp = l->first->next;
+    Element* tmp = l->first;
     while (tmp->next)
     {
-        printf("Element %d: %ld\n", cmpt, tmp);
+        printf("Element %d: %ld\n", cmpt, (size_t)tmp->next);
         tmp = tmp->next;
         cmpt ++;
     }

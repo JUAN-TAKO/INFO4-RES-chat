@@ -89,7 +89,8 @@ void send_pseudo(int sock_num, char* pseudo){
 	char tampon;
 
 	h_reads(sock_num, &tampon, 1);
-	if ((uint8_t)tampon == (uint8_t)Q_NAME) h_writes(sock_num, (char*)A_NAME, 1);
+	commands_e cm= A_NAME;
+	if ((uint8_t)tampon == (uint8_t)Q_NAME) h_writes(sock_num, (char*)&cm, 1);
 }
 
 void display_help(){
@@ -106,13 +107,15 @@ void communication(int sock_num, char* command, char* name, char* message){
 	scanf("%8s", command);
 
 	int case_number;
-	if (strcmp(command,"envoi")) case_number = 0;
-	else if (strcmp(command,"list")) case_number = 1;
-	else if (strcmp(command,"quit")) case_number = 2;
+	if (strcmp(command,"envoi")==0) case_number = 0;
+	else if (strcmp(command,"list")==0) case_number = 1;
+	else if (strcmp(command,"quit")==0) case_number = 2;
 
+	printf("case number : %d\n", case_number);
 	switch (case_number)
 	{
 	case 0:
+		printf("a\n");
 		printf("Entrer le nom du destinataire:");
 		scanf("%32s", name);
 		printf("Entrez le message:");

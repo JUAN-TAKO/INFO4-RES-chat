@@ -152,14 +152,18 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 			printf("name\n");
 			int nl;
 			char* name = read_string(sock_id, &nl);
-			
+			printf("read\n");
 
 			Client* c = find(anonymous, match_id, &sock_id);
-			
+			printf("found\n");
+
 			del(anonymous, match_id, &sock_id);
-			c->name = name;
-			add(users, c);
+			printf("del\n");
 			
+			c->name = name;
+			
+			add(users, c);
+
 			printf("[USER LOGIN]: %s is %s\n", inet_ntoa(c->addrin->sin_addr), c->name);
 			break;
 

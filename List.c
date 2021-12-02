@@ -34,32 +34,45 @@ void* find(List* l, compare_pt f_pt, void* elem_cmp){
     return NULL;
 }
 
-void del(List* l, compare_pt f_pt, void* elem_cmp){
-    Element* tmp = l->first ;
-    Element* save;
-    int cmpt = 0; 
-    if (f_pt(tmp->content, elem_cmp)) {
-        save = tmp->next ;
-        if (l->length>1) l->first = l->first->next ;
-        else{
-            l->first = NULL;
-            l->last = NULL;
-        } 
+
+void* del(List* l, compare_pt f_pt, void* elem_cmp){
+    Element* last = l->first;
+    if(l->first && f_pt(l->first->content, elem_cmp)){
+        void* e = l->first->content;
+        
+        if(last == l->last)
+            l->last = last->next;
+        
+        l->first = l->first->next;
         l->length--;
-        return save->content;
+        return e;
     }
-    while (tmp){
-        if (f_pt(tmp->next, elem_cmp)){
-            if (cmpt+1 == l->length){
-                l->last = tmp;
-            }
-            save = tmp->next ;
-            tmp->next = tmp->next->next ;
+    while(last->next){
+        if(f_pt(last->next->content, elem_cmp)){
+            void* e = last->next->content;
+
+            if(last == l->last)
+                l->last = last->next;
+
+            last->next = last->next->next;
             l->length--;
-            return save->content ;
-        } 
+            return e;
+        }
+        last = last->next;
+    }
+    return NULL;
+}
+
+void print_list(List* l){
+    printf("Frist: %ld\n", l->first);
+    printf("Last: %ld\n", l->last);
+    printf("Length: %ld\n", l->length);
+    int cmpt = 2;
+    Element* tmp = l->first->next;
+    while (tmp->next)
+    {
+        printf("Element %d: %ld\n", cmpt, tmp);
         tmp = tmp->next;
         cmpt ++;
     }
-    return NULL;
 }

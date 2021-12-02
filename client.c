@@ -74,12 +74,8 @@ char* init_connection(char *serveur, char *service, int *sock_num){
 
 	printf("\nPseudonyme souhaité sur la messagerie (32 caractères max): ");
 	char* pseudo = malloc(32);
-<<<<<<< HEAD
 	scanf("%32s", pseudo);
 
-=======
-	scanf("%s", pseudo);
->>>>>>> dd65e75647b2d6b9df8b3421f3d17f6397756640
 	*sock_num = h_socket(AF_INET, SOCK_STREAM);
 	struct sockaddr_in *adrClient;
 	adr_socket(service, serveur, SOCK_STREAM, &adrClient);
@@ -90,20 +86,10 @@ char* init_connection(char *serveur, char *service, int *sock_num){
 
 
 void send_pseudo(int sock_num, char* pseudo){
-<<<<<<< HEAD
-	char* tampon = malloc(1);
-	printf("a\n");
-	h_reads(sock_num, tampon, 1);
-	printf("b\n");
-	if (strcmp(tampon, (char*)Q_NAME)) h_writes(sock_num, (char*)A_NAME, 1);
-	printf("c\n");
-
-=======
 	char tampon;
 
 	h_reads(sock_num, &tampon, 1);
 	if ((uint8_t)tampon == (uint8_t)Q_NAME) h_writes(sock_num, (char*)A_NAME, 1);
->>>>>>> dd65e75647b2d6b9df8b3421f3d17f6397756640
 }
 
 void display_help(){

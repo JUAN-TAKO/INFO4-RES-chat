@@ -84,13 +84,21 @@ char* init_connection(char *serveur, char *service, int *sock_num){
 	return pseudo;
 }
 
+void write_string(int sock_id, char* msg){
+	int len = strlen(msg);
+	h_writes(sock_id, (char*)&len, 4);
+	h_writes(sock_id, msg, len);
+}
 
 void send_pseudo(int sock_num, char* pseudo){
 	char tampon;
 
 	h_reads(sock_num, &tampon, 1);
 	commands_e cm= A_NAME;
-	if ((uint8_t)tampon == (uint8_t)Q_NAME) h_writes(sock_num, (char*)&cm, 1);
+	if ((uint8_t)tampon == (uint8_t)Q_NAME){
+		h_writes(sock_num, (char*)&cm, 1);
+		write_string(sock_num, pseudo);
+	} 
 }
 
 void display_help(){

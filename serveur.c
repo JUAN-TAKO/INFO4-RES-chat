@@ -141,12 +141,15 @@ void free_client(int sock_id, List* l){
 }
 
 void handle_msg_anon(int sock_id, List* anonymous, List* users){
+	printf("anon\n");
 	commands_e command;
 	h_reads(sock_id, (char*)&command, 1);
+	printf("test\n");
 	int length;
 	switch(command){
 
 		case A_NAME: ;
+			printf("name\n");
 			int nl;
 			char* name = read_string(sock_id, &nl);
 			
@@ -161,6 +164,7 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 			break;
 
 		case MSG_TO:
+			printf("MSG\n");
 			clear_buffer(sock_id);
 			
 			int8_t com = ERROR;
@@ -172,10 +176,12 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 			break;
 
 		BYE:
+			printf("BYE\n");
 			free_client(sock_id, anonymous);
 			break;
 
 		default:
+			printf("ERR\n");
 			clear_buffer(sock_id);
 
 			int8_t com_ = ERROR;
@@ -202,6 +208,7 @@ void send_msg(Client* src, Client* dest, char* msg, int msg_len){
 }
 
 void handle_msg_user(int sock_id, List* users){
+	printf("user\n");
 	commands_e command;
 	h_reads(sock_id, (char*)&command, 1);
 	

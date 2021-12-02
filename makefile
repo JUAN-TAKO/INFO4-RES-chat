@@ -1,6 +1,6 @@
 
-OBJ1 = fon.o client.o 
-OBJ2 = fon.o serveur.o 
+OBJ1 = fon.o client.o List.o
+OBJ2 = fon.o serveur.o List.o
 OPTIONS	= 
 CFLAGS = -g
 LFLAGS = -g
@@ -11,45 +11,29 @@ ifeq ($(shell uname), Darwin)
 LFLAGS	+= -L/opt/local/lib
 CFLAGS	+= -I /opt/local/include
 endif
-#Changer si necessaire le chemin d'acces aux librairies
 
-# Adaptation a Linux
-ifeq ($(shell uname), Linux)
-OPTIONS	+= -ltermcap
-endif
-
-# Adaptation a FreeBSD
-# Attention : il faut utiliser gmake...
-ifeq ($(shell uname),FreeBSD)
-OPTIONS	+= -ltermcap
-endif
-
-# Adaptation a Solaris
-
-ifeq ($(shell uname),SunOS)
-OPTIONS	+= -ltermcap  -lsocket -lnsl
-CFLAGS	+= -I..
-endif
 
 EXEC = ${OBJ1} client ${OBJ2} serveur
 all: ${EXEC} 	
 
+List.o : List.h List.c
+	gcc -c List.c
 
 fon.o :  fon.h fon.c
 	#gcc -DDEBUG -c fon.c
 	gcc -c fon.c
 
 client.o : fon.h	client.c 
-	gcc  $(CFLAGS) -c  client.c	
+	gcc  $(CFLAGS) -c  client.c	-o client.o
 
 serveur.o : fon.h	serveur.c 
-	gcc  $(CFLAGS) -c  serveur.c	
+	gcc  $(CFLAGS) -c  serveur.c -o serveur.o
 
 client : ${OBJ1}	
-	gcc $(LFLAGS) ${OBJ1} -o client -lcurses   $(OPTIONS)
+	gcc $(LFLAGS) ${OBJ1} -o client  $(OPTIONS)
 
 serveur : ${OBJ2}	
-	gcc $(LFLAGS) ${OBJ2} -o serveur -lcurses   $(OPTIONS)
+	gcc $(LFLAGS) ${OBJ2} -o serveur  $(OPTIONS)
 
 
 

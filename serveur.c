@@ -94,11 +94,6 @@ void build_fd_sets(int listen_sock, List anonymous, List users, fd_set* fds){
 	}
 }  
 
-
-void new_user(){
-
-}
-
 char* read_string(int sock_id, int* len){
 	h_reads(sock_id, (char*)len, 4);
 	char* r = malloc(*len+1);
@@ -115,6 +110,21 @@ void clear_buffer(int sock_id){
 	int r;
 	while(  (r = read(sock_id, buffer, 256)) != 0);
 }
+
+void write_string(int sock_id, char* msg){
+	int len = strlen(msg);
+	h_writes(sock_id, (char*)&len, 4);
+	h_writes(sock_id, msg, len);
+}
+
+void write_command(int sock_id, commands_e command){
+	h_writes(sock_id, (uint8_t*)&command, 1);
+}
+commands_e read_command(int sock_id){
+	uint8_t c = 0;
+	h_reads(sock_id, (char*)&c, 1);
+	return (commands_e)c;
+}
 void new_connection(int listen_sock, List* anonymous){
 	Client* c = malloc(sizeof(Client));
 	int id_socket_client = h_accept(listen_sock, c->addrin);
@@ -124,8 +134,7 @@ void new_connection(int listen_sock, List* anonymous){
 	printf("[NEW CONNECTION]\n");
 	add(anonymous, c);
 	
-	char com = Q_NAME;
-	h_writes(c->id, &com, 1);
+	write_command(c->id, Q_NAME);
 
 }
 
@@ -143,10 +152,9 @@ void free_client(int sock_id, List* l){
 void handle_msg_anon(int sock_id, List* anonymous, List* users){
 	printf("anon\n");
 
-	commands_e command;
-	h_reads(sock_id, (char*)&command, 1);
+	commands_e command = read_command(sock_id);
 	int length;
-	switch((uint8_t)command){
+	switch(command){
 
 		case A_NAME: ;
 			int nl;
@@ -163,12 +171,9 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 			printf("MSG\n");
 			clear_buffer(sock_id);
 			
-			int8_t com = ERROR;
 			char err_msg[] = "You must be logged in to send messages (name required)";
-			length = sizeof(err_msg) - 1;
-			h_writes(sock_id, &com, 1);
-			h_writes(sock_id, (char*)&length, 4);
-			h_writes(sock_id, err_msg, length);
+			write_command(sock_id, ERROR);
+			write_string(sock_id, err_msg);
 			break;
 
 		BYE:
@@ -180,28 +185,24 @@ void handle_msg_anon(int sock_id, List* anonymous, List* users){
 			printf("ERR\n");
 			clear_buffer(sock_id);
 
-			int8_t com_ = ERROR;
 			char err_msg_[] = "Unknown command";
-			length = sizeof(err_msg_) - 1;
-			h_writes(sock_id, &com_, 1);
-			h_writes(sock_id, (char*)&length, 4);
-			h_writes(sock_id, err_msg, length);
+			write_command(sock_id, ERROR);
+			write_string(sock_id, err_msg);
 			break;
 	}
 }
 
-void send_msg(Client* src, Client* dest, char* msg, int msg_len){
+void send_msg(Client* src, Client* dest, char* msg){
 
 	printf("[MSG]: %s -> %s\n", src->name, dest->name);
 
 	int8_t command = MSG_FROM;
-	int name_len = strlen(src->name);
+
 	h_writes(dest->id, &command, 1);
-	h_writes(dest->id, (char*)&name_len, 4);
-	h_writes(dest->id, src->name, name_len);
-	h_writes(dest->id, (char*)&msg_len, 4);
-	h_writes(dest->id, msg, msg_len);
+	write_string(dest->id, src->name);
+	write_string(dest->id, msg);
 }
+
 
 void send_list(int sock_id, List* users){
 
@@ -209,17 +210,20 @@ void send_list(int sock_id, List* users){
 
 	int8_t command = A_LIST;
 	int nb = users->length;
-	/*h_writes(dest->id, &command, 1);
-	h_writes(dest->id, (char*)&name_len, 4);
-	h_writes(dest->id, src->name, name_len);
-	h_writes(dest->id, (char*)&msg_len, 4);
-	h_writes(dest->id, msg, msg_len);*/
+	h_writes(sock_id, &command, 1);
+	h_writes(sock_id, (char*)&nb, 4);
+	
+	Element* e = users->first;
+	while(e){
+		Client* client = e->content;
+		write_string(sock_id, client->name);
+		e = e->next;
+	}
 }
 
 void handle_msg_user(int sock_id, List* users){
 	printf("user\n");
-	commands_e command;
-	h_reads(sock_id, (char*)&command, 1);
+	commands_e command = read_command(sock_id);
 	
 	
 	int length;
@@ -229,12 +233,9 @@ void handle_msg_user(int sock_id, List* users){
 		case A_NAME:
 			clear_buffer(sock_id);
 
-			int8_t c = ERROR;
 			char err_msg[] = "Already logged in";
-			length = sizeof(err_msg) - 1;
-			h_writes(sock_id, &c, 1);
-			h_writes(sock_id, (char*)&length, 4);
-			h_writes(sock_id, err_msg, length);
+			write_command(sock_id, ERROR);
+			write_string(sock_id, err_msg);
 			break;
 
 		case MSG_TO: ;
@@ -248,15 +249,12 @@ void handle_msg_user(int sock_id, List* users){
 			Client* src = find(users, match_id, &sock_id);
 
 			if(dest){
-				send_msg(src, dest, msg, msg_len);
+				send_msg(src, dest, msg);
 			}
 			else{
-				int8_t c = ERROR;
 				char msg[] = "User not found";
-				length = sizeof(msg) - 1;
-				h_writes(sock_id, &c, 1);
-				h_writes(sock_id, (char*)&length, 4);
-				h_writes(sock_id, msg, length);
+				write_command(sock_id, ERROR);
+				write_string(sock_id, msg);
 			}
 			break;
 
@@ -270,12 +268,10 @@ void handle_msg_user(int sock_id, List* users){
 		default:
 			clear_buffer(sock_id);
 
-			int8_t com = ERROR;
 			char err_msg_[] = "Unknown command";
-			length = sizeof(err_msg_) - 1;
-			h_writes(sock_id, &com, 1);
-			h_writes(sock_id, (char*)&length, 4);
-			h_writes(sock_id, err_msg, length);
+			
+			write_command(sock_id, ERROR);
+			write_string(sock_id, err_msg_);
 			break;
 	}
 }

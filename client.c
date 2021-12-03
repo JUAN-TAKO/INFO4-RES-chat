@@ -192,23 +192,18 @@ void client_appli (char *serveur,char *service)
 	char* name = malloc(32);
 	char* message = malloc(2048);
 
-	fd_set set, setbis;
-	FD_ZERO(&set);
-	FD_SET(1, &set); //terminal, num socket ? 
-	FD_SET(sock_num, &set);
-
 	while(1){
+		fd_set set, setbis;
+		FD_ZERO(&set);
+		FD_SET(1, &set); //terminal, num socket ? 
+		FD_SET(sock_num, &set);
 		display_help();
 		select(sock_num+1, &set, 0, 0, 0);
-		bcopy ( (char*) &set, (char*) &setbis, sizeof(set)) ;
 		if (FD_ISSET(1, &set))
 			communication(sock_num, command, name, message, &set);
 		if (FD_ISSET(sock_num, &set)) {
-			printf("bob\n");
 			reception(sock_num, message);
 		}
-		reception(sock_num, message);
-		bcopy ( (char*) &setbis, (char*) &set, sizeof(set)) ;
 	}
 
 

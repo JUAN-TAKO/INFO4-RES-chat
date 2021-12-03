@@ -136,6 +136,8 @@ void free_client(int sock_id, List* l){
 }
 
 void handle_msg_anon(int sock_id, List* anonymous, List* users){
+	printf("anon\n");
+
 	commands_e command;
 	h_reads(sock_id, (char*)&command, 1);
 	int length;
@@ -196,7 +198,21 @@ void send_msg(Client* src, Client* dest, char* msg, int msg_len){
 	h_writes(dest->id, msg, msg_len);
 }
 
+void send_list(int sock_id, List* users){
+
+	printf("[LIST]: ID: %d\n", sock_id);
+
+	int8_t command = A_LIST;
+	int nb = users->length;
+	/*h_writes(dest->id, &command, 1);
+	h_writes(dest->id, (char*)&name_len, 4);
+	h_writes(dest->id, src->name, name_len);
+	h_writes(dest->id, (char*)&msg_len, 4);
+	h_writes(dest->id, msg, msg_len);*/
+}
+
 void handle_msg_user(int sock_id, List* users){
+	printf("user\n");
 	commands_e command;
 	h_reads(sock_id, (char*)&command, 1);
 	
@@ -243,6 +259,9 @@ void handle_msg_user(int sock_id, List* users){
 			free_client(sock_id, users);
 			break;
 
+		case Q_LIST:
+			send_list(sock_id, users);
+			break;
 		default:
 			clear_buffer(sock_id);
 
@@ -305,8 +324,6 @@ void serveur_appli(char *service)
 		
 		build_fd_sets(listen_sock, anonymous, users, &set); //on remplis le set
 
-		bcopy ( (char*) &set, (char*) &setbis, sizeof(set)) ; /* sauvegarde set dans setbis car set va changer lors du select */
-
 		printf("maxsock %d\n", maxsock);
 		//en attente d'un évenement
 		select (maxsock, &set, 0, 0, 0) ;
@@ -317,26 +334,26 @@ void serveur_appli(char *service)
 			new_connection(listen_sock, &anonymous);
 		}
 		
-		//message reçu d'un client anonyme ?
-		Element* e = anonymous.first;
+		//message reçu d'un utilisateur ?
+		Element* e = users.first;
 		while(e){
 			Client* client = e->content;
-			if(FD_ISSET(client->id, &set))
-				handle_msg_anon(client->id, &anonymous, &users);
-			e = e->next;
-		}
-
-		//message reçu dd'un utilisateur ?
-		e = users.first;
-		while(e){
-			Client* client = e->content;
+			Element* next = e->next;
 			if(FD_ISSET(client->id, &set))
 				handle_msg_user(client->id, &users);
-			e = e->next;
+			e = next;
+		}
+
+		//message reçu d'un client anonyme ?
+		e = anonymous.first;
+		while(e){
+			Client* client = e->content;
+			Element* next = e->next;
+			if(FD_ISSET(client->id, &set))
+				handle_msg_anon(client->id, &anonymous, &users);
+			e = next;
 		}
 		
-		//reset du fd_set
-		bcopy ( (char*) &setbis, (char*) &set, sizeof(set)) ;
 	}
 
 }

@@ -94,11 +94,6 @@ void build_fd_sets(int listen_sock, List anonymous, List users, fd_set* fds){
 	}
 }  
 
-
-void new_user(){
-
-}
-
 char* read_string(int sock_id, int* len){
 	h_reads(sock_id, (char*)len, 4);
 	char* r = malloc(*len+1);

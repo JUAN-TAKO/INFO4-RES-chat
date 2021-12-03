@@ -114,11 +114,11 @@ void send_bye(int sock_num){
 	exit(-1);
 }
 
-void communication(int sock_num, char* command, char* name, char* message){
-	display_help();
+void communication(int sock_num, char* command, char* name, char* message, fd_set* set){
 	scanf("%8s", command);
+	
 
-	int case_number;
+	int case_number=-1;
 	if (strcmp(command,"envoi")==0) case_number = 0;
 	else if (strcmp(command,"list")==0) case_number = 1;
 	else if (strcmp(command,"quit")==0) case_number = 2;
@@ -132,7 +132,7 @@ void communication(int sock_num, char* command, char* name, char* message){
 		int tmp = strlen(name);
 		int tmp2 = strlen(name);
 
-		commands_e cm= MSG_TO;
+		commands_e cm = MSG_TO;
 		h_writes(sock_num, (char*)&cm, 1);
 		h_writes(sock_num, (char*)&tmp,4);
 		h_writes(sock_num, name, tmp);
@@ -192,10 +192,23 @@ void client_appli (char *serveur,char *service)
 	char* name = malloc(32);
 	char* message = malloc(2048);
 
+	fd_set set, setbis;
+	FD_ZERO(&set);
+	FD_SET(1, &set); //terminal, num socket ? 
+	FD_SET(sock_num, &set);
+
 	while(1){
-		printf("debug\n");
-		communication(sock_num, command, name, message);
+		display_help();
+		select(sock_num+1, &set, 0, 0, 0);
+		bcopy ( (char*) &set, (char*) &setbis, sizeof(set)) ;
+		if (FD_ISSET(1, &set))
+			communication(sock_num, command, name, message, &set);
+		if (FD_ISSET(sock_num, &set)) {
+			printf("bob\n");
+			reception(sock_num, message);
+		}
 		reception(sock_num, message);
+		bcopy ( (char*) &setbis, (char*) &set, sizeof(set)) ;
 	}
 
 

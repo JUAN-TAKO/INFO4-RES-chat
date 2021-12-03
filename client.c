@@ -92,12 +92,15 @@ void write_string(int sock_id, char* msg){
 
 void send_pseudo(int sock_num, char* pseudo){
 	char tampon;
-
+	printf("debug1\n");
 	h_reads(sock_num, &tampon, 1);
-	commands_e cm= A_NAME;
+	commands_e cm = A_NAME;
 	if ((uint8_t)tampon == (uint8_t)Q_NAME){
+		printf("debug2\n");
 		h_writes(sock_num, (char*)&cm, 1);
+		printf("debug3\n");
 		write_string(sock_num, pseudo);
+		printf("debug4\n");
 	} 
 }
 
@@ -106,8 +109,9 @@ void display_help(){
 }
 
 void send_bye(int sock_num){
-	int8_t command = BYE;
-	h_writes(sock_num, &command, 1);
+	commands_e cm = BYE;
+	h_writes(sock_num, (char*)&cm, 1);
+	exit(-1);
 }
 
 void communication(int sock_num, char* command, char* name, char* message){
@@ -118,19 +122,18 @@ void communication(int sock_num, char* command, char* name, char* message){
 	if (strcmp(command,"envoi")==0) case_number = 0;
 	else if (strcmp(command,"list")==0) case_number = 1;
 	else if (strcmp(command,"quit")==0) case_number = 2;
-
-	printf("case number : %d\n", case_number);
 	switch (case_number)
 	{
 	case 0:
-		printf("a\n");
-		printf("Entrer le nom du destinataire:");
+		printf("Entrer le nom du destinataire: ");
 		scanf("%32s", name);
-		printf("Entrez le message:");
+		printf("Entrez le message: ");
 		scanf("%2048s", message);
 		int tmp = strlen(name);
 		int tmp2 = strlen(name);
 
+		commands_e cm= MSG_TO;
+		h_writes(sock_num, (char*)&cm, 1);
 		h_writes(sock_num, (char*)&tmp,4);
 		h_writes(sock_num, name, tmp);
 		h_writes(sock_num, (char*)&tmp2, 4);
@@ -139,10 +142,10 @@ void communication(int sock_num, char* command, char* name, char* message){
 	case 1:
 		break;
 	case 2:
+		send_bye(sock_num);
 		free(command);
 		free(name);
 		free(message);
-		send_bye(sock_num);
 		h_close(sock_num);
 		break;
 	default:
@@ -161,11 +164,15 @@ char* read_string(int sock_id, int* len){
 }
 
 void reception(int sock_num, char* message){
-	read(sock_num, message, 1);
-	int tmp;
-	read_string(sock_num, &tmp);
-	message = read_string(sock_num, &tmp);
-	printf("%s\n", message);
+	if (read(sock_num, message, 1) == 0) return;
+	else {
+		int tmp;
+		char* name;
+		name = read_string(sock_num, &tmp);
+		printf("Message de %s: ", name);
+		message = read_string(sock_num, &tmp);
+		printf("%s\n", message);
+	}
 }
 
 /*****************************************************************************/
@@ -186,6 +193,7 @@ void client_appli (char *serveur,char *service)
 	char* message = malloc(2048);
 
 	while(1){
+		printf("debug\n");
 		communication(sock_num, command, name, message);
 		reception(sock_num, message);
 	}

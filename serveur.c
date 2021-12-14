@@ -1,16 +1,16 @@
-#include<stdio.h>
+#include <stdio.h>
 #include <curses.h>
 #include <string.h>
-#include<sys/signal.h>
-#include<sys/wait.h>
-#include<stdlib.h>
+#include <sys/signal.h>
+#include <sys/wait.h>
+#include <stdlib.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <string.h>
 
-#include "fon.h"     		/* Primitives de la boite a outils */
+#include "netutils.h"     		/* Primitives de la boite a outils */
 #include "commands.h"
 #include "List.h"
 
@@ -94,37 +94,6 @@ void build_fd_sets(int listen_sock, List anonymous, List users, fd_set* fds){
 	}
 }  
 
-char* read_string(int sock_id, int* len){
-	h_reads(sock_id, (char*)len, 4);
-	char* r = malloc(*len+1);
-	h_reads(sock_id, r, *len);
-	r[*len] = '\0';
-	return r;
-}
-void skip_string(int sock_id){
-	int len;
-	free(read_string(sock_id, &len));
-}
-void clear_buffer(int sock_id){
-	char buffer[256];
-	int r;
-	while(  (r = read(sock_id, buffer, 256)) != 0);
-}
-
-void write_string(int sock_id, char* msg){
-	int len = strlen(msg);
-	h_writes(sock_id, (char*)&len, 4);
-	h_writes(sock_id, msg, len);
-}
-
-void write_command(int sock_id, commands_e command){
-	h_writes(sock_id, (uint8_t*)&command, 1);
-}
-commands_e read_command(int sock_id){
-	uint8_t c = 0;
-	h_reads(sock_id, (char*)&c, 1);
-	return (commands_e)c;
-}
 void new_connection(int listen_sock, List* anonymous){
 	Client* c = malloc(sizeof(Client));
 	int id_socket_client = h_accept(listen_sock, c->addrin);
@@ -150,7 +119,6 @@ void free_client(int sock_id, List* l){
 }
 
 void handle_msg_anon(int sock_id, List* anonymous, List* users){
-	printf("anon\n");
 
 	commands_e command = read_command(sock_id);
 	int length;
@@ -222,7 +190,6 @@ void send_list(int sock_id, List* users){
 }
 
 void handle_msg_user(int sock_id, List* users){
-	printf("user\n");
 	commands_e command = read_command(sock_id);
 	
 	
@@ -324,11 +291,8 @@ void serveur_appli(char *service)
 		fd_set set, setbis ; /* set et setbis sont des ensembles de descripteur */
 		
 		build_fd_sets(listen_sock, anonymous, users, &set); //on remplis le set
-
-		printf("maxsock %d\n", maxsock);
 		//en attente d'un évenement
 		select (maxsock, &set, 0, 0, 0) ;
-		printf("up\n");
 
 		//nouvelle connexion ?
 		if (FD_ISSET(listen_sock, &set)){
